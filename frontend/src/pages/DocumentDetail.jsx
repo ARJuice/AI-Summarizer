@@ -171,6 +171,25 @@ function DocumentDetail() {
                   </Box>
                 )}
 
+                {document?.priority && document.priority !== 'none' && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Priority
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip
+                        label={document.priority.charAt(0).toUpperCase() + document.priority.slice(1)}
+                        color={
+                          document.priority === 'high' ? 'error' :
+                          document.priority === 'medium' ? 'warning' :
+                          document.priority === 'low' ? 'info' : 'default'
+                        }
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+                )}
+
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="caption" color="text.secondary">
                     Upload Date
