@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
   Paper,
   Typography,
   TextField,
@@ -171,7 +170,7 @@ function UploadDocument() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }} ref={formRef}>
+    <Box sx={{ width: '100%', minHeight: '100vh', p: 2 }} ref={formRef}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -181,8 +180,9 @@ function UploadDocument() {
           elevation={0}
           className="upload-form"
           sx={{ 
-            p: 4, 
+            p: { xs: 2, sm: 3, md: 4 },
             borderRadius: 4,
+            width: '100%',
             background: (theme) => 
               theme.palette.mode === 'dark' 
                 ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
@@ -329,7 +329,7 @@ function UploadDocument() {
             )}
           </AnimatePresence>
 
-          <Box component="form" onSubmit={handleSubmit}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 1400, mx: 'auto' }}>
             {/* Enhanced File Upload */}
             <motion.div
               whileHover={{ scale: 1.02 }}
@@ -631,7 +631,7 @@ function UploadDocument() {
           </Box>
         </Paper>
       </motion.div>
-    </Container>
+    </Box>
   );
 }
 

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
   Paper,
   TextField,
   Button,
@@ -35,8 +34,9 @@ function Login() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
+    <Box sx={{ width: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
+      <Box sx={{ width: '100%', maxWidth: 500 }}>
+        <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
           MetroDocAI
         </Typography>
@@ -93,7 +93,8 @@ function Login() {
           </Button>
         </Box>
       </Paper>
-    </Container>
+      </Box>
+    </Box>
   );
 }
 

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
 import ThemeToggle from './ThemeToggle';
+import NotificationIcon from './NotificationIcon';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -103,6 +104,8 @@ function Navbar() {
             </Button>
           </motion.div>
 
+          <NotificationIcon />
+          
           <ThemeToggle />
           
           <motion.div

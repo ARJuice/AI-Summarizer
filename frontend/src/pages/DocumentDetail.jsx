@@ -98,7 +98,7 @@ function DocumentDetail() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: 3 }}>
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/documents')}
@@ -146,8 +146,24 @@ function DocumentDetail() {
                 <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                   Extracted Content
                 </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', maxHeight: 400, overflow: 'auto' }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2, 
+                    bgcolor: (theme) => 
+                      theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+                    maxHeight: 400, 
+                    overflow: 'auto' 
+                  }}
+                >
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      whiteSpace: 'pre-wrap',
+                      color: (theme) => 
+                        theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary'
+                    }}
+                  >
                     {document.extractedText}
                   </Typography>
                 </Paper>

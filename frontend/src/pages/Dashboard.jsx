@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Container,
   Grid,
   Paper,
   Typography,
@@ -13,6 +12,7 @@ import {
   TextField,
   InputAdornment,
   Alert,
+  Chip,
 } from '@mui/material';
 import {
   Upload as UploadIcon,
@@ -29,6 +29,20 @@ function Dashboard() {
   const { documents, searchQuery, loading } = useSelector((state) => state.documents);
   const { user } = useSelector((state) => state.auth);
   const [localSearch, setLocalSearch] = useState('');
+
+  // Function to get priority color
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return 'error';
+      case 'medium':
+        return 'warning';
+      case 'low':
+        return 'info';
+      default:
+        return 'default';
+    }
+  };
 
   useEffect(() => {
     loadDocuments();
@@ -64,7 +78,7 @@ function Dashboard() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ width: '100%', minHeight: '100vh', p: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
           Dashboard
@@ -175,7 +189,17 @@ function Dashboard() {
                 }}
                 onClick={() => navigate(`/documents/${doc.id}`)}
               >
-                <Typography variant="subtitle1">{doc.title}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="subtitle1" sx={{ flex: 1 }}>{doc.title}</Typography>
+                  {doc.priority && doc.priority !== 'none' && (
+                    <Chip
+                      label={doc.priority.charAt(0).toUpperCase() + doc.priority.slice(1)}
+                      color={getPriorityColor(doc.priority)}
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
+                </Box>
                 <Typography variant="body2" color="text.secondary">
                   {doc.description}
                 </Typography>
@@ -186,7 +210,7 @@ function Dashboard() {
           <Alert severity="info">No documents uploaded yet. Start by uploading your first document!</Alert>
         )}
       </Paper>
-    </Container>
+    </Box>
   );
 }
 

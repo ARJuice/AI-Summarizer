@@ -32,6 +32,20 @@ function DocumentList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState(null);
 
+  // Function to get priority color
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return 'error';
+      case 'medium':
+        return 'warning';
+      case 'low':
+        return 'info';
+      default:
+        return 'default';
+    }
+  };
+
   useEffect(() => {
     loadDocuments();
   }, []);
@@ -84,7 +98,7 @@ function DocumentList() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
           Document Catalog
@@ -145,18 +159,29 @@ function DocumentList() {
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <DescriptionIcon sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography variant="h6" noWrap>
-                      {doc.title}
-                    </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                      <DescriptionIcon sx={{ mr: 1, color: 'primary.main', flexShrink: 0 }} />
+                      <Typography variant="h6" noWrap sx={{ flex: 1 }}>
+                        {doc.title}
+                      </Typography>
+                    </Box>
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     {doc.description || 'No description'}
                   </Typography>
-                  {doc.department && (
-                    <Chip label={doc.department} size="small" color="secondary" sx={{ mb: 1 }} />
-                  )}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    {doc.department && (
+                      <Chip label={doc.department} size="small" color="secondary" />
+                    )}
+                    {doc.priority && doc.priority !== 'none' && (
+                      <Chip
+                        label={doc.priority.charAt(0).toUpperCase() + doc.priority.slice(1)}
+                        color={getPriorityColor(doc.priority)}
+                        size="small"
+                      />
+                    )}
+                  </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                     {doc.tags?.slice(0, 3).map((tag) => (
                       <Chip key={tag} label={tag} size="small" variant="outlined" />
