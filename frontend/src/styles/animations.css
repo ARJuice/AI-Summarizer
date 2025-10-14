@@ -1,32 +1,3 @@
-/* Global Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #1976d2, #dc004e);
-  border-radius: 10px;
-  transition: all 0.3s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #1565c0, #c51162);
-}
-
-/* Dark mode scrollbar */
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #90caf9, #f48fb1);
-}
-
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #64b5f6, #f06292);
-}
-
 /* Custom animations */
 @keyframes float {
   0% {
@@ -172,12 +143,6 @@
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-}
-
-/* Custom scrollbar for specific containers */
-.custom-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(25, 118, 210, 0.5) transparent;
 }
 
 /* Reduced motion for accessibility */
