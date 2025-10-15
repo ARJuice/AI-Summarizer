@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Grid,
@@ -22,6 +22,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { setDocuments, setSearchQuery, setLoading } from '../store/documentSlice';
 import { documentService } from '../services/documentService';
+import CountUp from '../components/CountUp';
+import { gsap } from 'gsap';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ function Dashboard() {
   const { documents, searchQuery, loading } = useSelector((state) => state.documents);
   const { user } = useSelector((state) => state.auth);
   const [localSearch, setLocalSearch] = useState('');
+  const welcomeRef = useRef(null);
 
   // Function to get priority color
   const getPriorityColor = (priority) => {
@@ -47,6 +50,18 @@ function Dashboard() {
   useEffect(() => {
     loadDocuments();
   }, []);
+
+  useEffect(() => {
+    if (welcomeRef.current) {
+      // Create a gradient animation
+      gsap.to(welcomeRef.current, {
+        backgroundPosition: '200% center',
+        duration: 3,
+        ease: 'none',
+        repeat: -1,
+      });
+    }
+  }, [user]);
 
   const loadDocuments = async () => {
     try {
@@ -83,15 +98,54 @@ function Dashboard() {
         <Typography variant="h4" component="h1">
           Dashboard
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Welcome, {user?.name || 'User'}
+        <Typography
+          ref={welcomeRef}
+          variant="h4"
+          component="div"
+          sx={{
+            fontWeight: 800,
+            fontSize: { xs: '1.75rem', md: '2.125rem' },
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+            background: 'linear-gradient(90deg, #2563eb 0%, #8b5cf6 25%, #ec4899 50%, #8b5cf6 75%, #2563eb 100%)',
+            backgroundSize: '200% auto',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Welcome, {user?.name || 'User'}!
         </Typography>
       </Box>
 
       {/* Quick Actions */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card
+            sx={{
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: 'inherit',
+                padding: '2px',
+                background: 'linear-gradient(135deg, #2563eb, #8b5cf6, #ec4899, #8b5cf6, #2563eb)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+                opacity: 0,
+                transition: 'opacity 0.3s ease',
+              },
+              '&:hover::before': {
+                opacity: 0.6,
+              },
+            }}
+          >
             <CardContent>
               <UploadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" gutterBottom>
@@ -110,7 +164,31 @@ function Dashboard() {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card
+            sx={{
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: 'inherit',
+                padding: '2px',
+                background: 'linear-gradient(135deg, #2563eb, #8b5cf6, #ec4899, #8b5cf6, #2563eb)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+                opacity: 0,
+                transition: 'opacity 0.3s ease',
+              },
+              '&:hover::before': {
+                opacity: 0.6,
+              },
+            }}
+          >
             <CardContent>
               <SearchIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" gutterBottom>
@@ -129,14 +207,44 @@ function Dashboard() {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card
+            sx={{
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: 'inherit',
+                padding: '2px',
+                background: 'linear-gradient(135deg, #2563eb, #8b5cf6, #ec4899, #8b5cf6, #2563eb)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+                opacity: 0,
+                transition: 'opacity 0.3s ease',
+              },
+              '&:hover::before': {
+                opacity: 0.6,
+              },
+            }}
+          >
             <CardContent>
               <DescriptionIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" gutterBottom>
                 Total Documents
               </Typography>
               <Typography variant="h3" color="primary">
-                {documents.length}
+                <CountUp
+                  from={0}
+                  to={documents.length}
+                  separator=","
+                  direction="up"
+                  duration={1.5}
+                />
               </Typography>
             </CardContent>
           </Card>
@@ -185,7 +293,13 @@ function Dashboard() {
                   borderColor: 'divider',
                   borderRadius: 1,
                   cursor: 'pointer',
-                  '&:hover': { bgcolor: 'action.hover' },
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  '&:hover': { 
+                    bgcolor: 'action.hover',
+                    borderColor: 'primary.main',
+                    transform: 'translateX(4px)',
+                  },
                 }}
                 onClick={() => navigate(`/documents/${doc.id}`)}
               >

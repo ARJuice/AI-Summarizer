@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import { authService } from '../services/authService';
 import Squares from '../components/Squares';
+import ClickSpark from '../components/ClickSpark';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -36,18 +37,25 @@ function Login() {
   };
 
   return (
-    <Box 
-      sx={{ 
-        width: '100%', 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        p: 4,
-        position: 'relative',
-        overflow: 'hidden',
-      }}
+    <ClickSpark
+      sparkColor='#06b6d4'
+      sparkSize={12}
+      sparkRadius={20}
+      sparkCount={8}
+      duration={500}
     >
+      <Box 
+        sx={{ 
+          width: '100%', 
+          minHeight: '100vh', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          p: 4,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
       {/* Animated Squares Background */}
       <Box
         sx={{
@@ -206,6 +214,7 @@ function Login() {
         </Paper>
       </motion.div>
     </Box>
+    </ClickSpark>
   );
 }
 

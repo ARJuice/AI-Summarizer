@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconButton, Badge, Tooltip } from '@mui/material';
+import { IconButton, Badge } from '@mui/material';
 import { Notifications as NotificationsIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { notificationService } from '../services/notificationService';
@@ -42,50 +42,48 @@ const NotificationIcon = () => {
 
   return (
     <>
-      <Tooltip title="Notifications">
-        <motion.div
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <IconButton
+          color="inherit"
+          onClick={handleNotificationClick}
+          sx={{
+            mr: 1,
+            '&:hover': {
+              backgroundColor: 'rgba(255,255,255,0.1)',
+            },
+          }}
         >
-          <IconButton
-            color="inherit"
-            onClick={handleNotificationClick}
+          <Badge 
+            badgeContent={unreadCount} 
+            color="error"
+            max={99}
             sx={{
-              mr: 1,
-              '&:hover': {
-                backgroundColor: 'rgba(255,255,255,0.1)',
+              '& .MuiBadge-badge': {
+                fontSize: '0.7rem',
+                minWidth: 16,
+                height: 16,
+                animation: unreadCount > 0 ? 'pulse 2s infinite' : 'none',
+              },
+              '@keyframes pulse': {
+                '0%': {
+                  transform: 'scale(1)',
+                },
+                '50%': {
+                  transform: 'scale(1.1)',
+                },
+                '100%': {
+                  transform: 'scale(1)',
+                },
               },
             }}
           >
-            <Badge 
-              badgeContent={unreadCount} 
-              color="error"
-              max={99}
-              sx={{
-                '& .MuiBadge-badge': {
-                  fontSize: '0.7rem',
-                  minWidth: 16,
-                  height: 16,
-                  animation: unreadCount > 0 ? 'pulse 2s infinite' : 'none',
-                },
-                '@keyframes pulse': {
-                  '0%': {
-                    transform: 'scale(1)',
-                  },
-                  '50%': {
-                    transform: 'scale(1.1)',
-                  },
-                  '100%': {
-                    transform: 'scale(1)',
-                  },
-                },
-              }}
-            >
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-        </motion.div>
-      </Tooltip>
+            <NotificationsIcon />
+          </Badge>
+        </IconButton>
+      </motion.div>
 
       <NotificationCenter
         open={notificationCenterOpen}
