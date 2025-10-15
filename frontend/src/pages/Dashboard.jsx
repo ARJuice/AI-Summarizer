@@ -121,31 +121,7 @@ function Dashboard() {
       {/* Quick Actions */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                borderRadius: 'inherit',
-                padding: '2px',
-                background: 'linear-gradient(135deg, #2563eb, #8b5cf6, #ec4899, #8b5cf6, #2563eb)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-                opacity: 0,
-                transition: 'opacity 0.3s ease',
-              },
-              '&:hover::before': {
-                opacity: 0.6,
-              },
-            }}
-          >
+          <Card>
             <CardContent>
               <UploadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" gutterBottom>
@@ -164,31 +140,7 @@ function Dashboard() {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                borderRadius: 'inherit',
-                padding: '2px',
-                background: 'linear-gradient(135deg, #2563eb, #8b5cf6, #ec4899, #8b5cf6, #2563eb)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-                opacity: 0,
-                transition: 'opacity 0.3s ease',
-              },
-              '&:hover::before': {
-                opacity: 0.6,
-              },
-            }}
-          >
+          <Card>
             <CardContent>
               <SearchIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" gutterBottom>
@@ -207,31 +159,7 @@ function Dashboard() {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                borderRadius: 'inherit',
-                padding: '2px',
-                background: 'linear-gradient(135deg, #2563eb, #8b5cf6, #ec4899, #8b5cf6, #2563eb)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-                opacity: 0,
-                transition: 'opacity 0.3s ease',
-              },
-              '&:hover::before': {
-                opacity: 0.6,
-              },
-            }}
-          >
+          <Card>
             <CardContent>
               <DescriptionIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" gutterBottom>
