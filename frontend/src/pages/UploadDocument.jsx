@@ -10,27 +10,34 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  IconButton,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   LinearProgress,
-  Fade,
-  Zoom,
-  Slide,
+  Stack,
+  Divider,
 } from '@mui/material';
-import { CloudUpload as CloudUploadIcon, Close as CloseIcon, Description, Add } from '@mui/icons-material';
+import { 
+  CloudUpload as CloudUploadIcon, 
+  Description as DescriptionIcon, 
+  Add as AddIcon,
+  CheckCircle as CheckCircleIcon,
+} from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
-import { addDocument, setLoading } from '../store/documentSlice';
+import Lenis from 'lenis';
+import { addDocument } from '../store/documentSlice';
 import { documentService } from '../services/documentService';
 
 function UploadDocument() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const formRef = useRef(null);
+  const containerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const headerRef = useRef(null);
+  const formRef = useRef(null);
+  
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -38,82 +45,110 @@ function UploadDocument() {
   const [priority, setPriority] = useState('none');
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
-  const [loading, setLoadingState] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
 
-  // GSAP animations on mount
+  // Initialize Lenis smooth scroll
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smooth: true,
+    });
+
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
+
+  // GSAP entrance animations
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.upload-header',
-        { y: -50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out' }
-      );
-      
-      gsap.fromTo(
-        '.upload-form',
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, delay: 0.2, ease: 'power3.out' }
-      );
-    }, formRef);
+      // Animate header
+      gsap.from(headerRef.current, {
+        y: -50,
+        opacity: 0,
+        duration: 1,
+        ease: 'power3.out',
+      });
+
+      // Animate form sections with stagger
+      gsap.from('.form-section', {
+        y: 30,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.1,
+        ease: 'power2.out',
+        delay: 0.3,
+      });
+    }, containerRef);
 
     return () => ctx.revert();
   }, []);
 
   // Animate upload progress
   useEffect(() => {
-    if (loading) {
+    if (loading && uploadProgress < 90) {
       const interval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) return prev;
-          return prev + Math.random() * 10;
-        });
-      }, 200);
-
+        setUploadProgress((prev) => Math.min(prev + Math.random() * 15, 90));
+      }, 300);
       return () => clearInterval(interval);
     }
-  }, [loading]);
+  }, [loading, uploadProgress]);
 
   const handleFileChange = (selectedFile) => {
     if (selectedFile) {
       setFile(selectedFile);
-      // Auto-populate title from filename if not set
       if (!title) {
-        setTitle(selectedFile.name.split('.')[0]);
+        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
       }
+      setError(null);
       
-      // Animate file selection
+      // Animate file selection with GSAP
       gsap.fromTo(
         '.file-preview',
-        { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' }
+        { scale: 0.8, opacity: 0, y: 20 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.4)' }
       );
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragActive(false);
     const droppedFile = e.dataTransfer.files[0];
-    handleFileChange(droppedFile);
+    if (droppedFile) {
+      handleFileChange(droppedFile);
+    }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragActive(true);
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragActive(false);
   };
 
   const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
+    const trimmedTag = tagInput.trim();
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag]);
       setTagInput('');
     }
   };
@@ -130,7 +165,7 @@ function UploadDocument() {
       return;
     }
 
-    setLoadingState(true);
+    setLoading(true);
     setUploadProgress(0);
     setError(null);
 
@@ -149,235 +184,193 @@ function UploadDocument() {
       setSuccess(true);
 
       // Success animation
-      gsap.to('.upload-form', {
-        scale: 0.95,
-        duration: 0.2,
+      gsap.to(formRef.current, {
+        scale: 1.02,
+        duration: 0.3,
         yoyo: true,
         repeat: 1,
         ease: 'power2.inOut',
       });
 
-      // Reset form and navigate
       setTimeout(() => {
         navigate('/documents');
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to upload document');
       setUploadProgress(0);
+      gsap.to(formRef.current, {
+        x: [0, -10, 10, -10, 10, 0],
+        duration: 0.5,
+        ease: 'power2.inOut',
+      });
     } finally {
-      setLoadingState(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ width: '100%', minHeight: '100vh', p: 2 }} ref={formRef}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+    <Box 
+      ref={containerRef}
+      sx={{ 
+        width: '100%', 
+        minHeight: '100vh',
+        p: { xs: 2, sm: 3, md: 4 },
+        background: (theme) =>
+          theme.palette.mode === 'dark'
+            ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+            : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+      }}
+    >
+      {/* Header Section */}
+      <Box 
+        ref={headerRef}
+        sx={{ 
+          maxWidth: 800, 
+          mx: 'auto', 
+          mb: 4, 
+          textAlign: 'center' 
+        }}
       >
-        <Paper 
-          elevation={0}
-          className="upload-form"
-          sx={{ 
-            p: { xs: 2, sm: 3, md: 4 },
-            borderRadius: 4,
-            width: '100%',
-            background: (theme) => 
-              theme.palette.mode === 'dark' 
-                ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
-                : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-            border: (theme) => 
-              `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
-            backdropFilter: 'blur(10px)',
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 4,
-              background: 'linear-gradient(90deg, #1976d2, #dc004e, #1976d2)',
-              backgroundSize: '200% 100%',
-              animation: 'gradient 3s ease infinite',
-            },
-            '@keyframes gradient': {
-              '0%': { backgroundPosition: '0% 50%' },
-              '50%': { backgroundPosition: '100% 50%' },
-              '100%': { backgroundPosition: '0% 50%' },
-            },
+        <Typography
+          variant="h3"
+          component="h1"
+          sx={{
+            fontWeight: 800,
+            fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+            mb: 2,
+            background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 50%, #ec4899 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em',
           }}
         >
-          <Box className="upload-header" sx={{ mb: 4, textAlign: 'center' }}>
+          Upload Document
+        </Typography>
+        <Typography
+          variant="h6"
+          color="text.secondary"
+          sx={{ 
+            fontSize: { xs: '1rem', sm: '1.1rem' },
+            lineHeight: 1.6,
+            fontWeight: 400,
+          }}
+        >
+          Transform your documents with AI-powered analysis and smart organization
+        </Typography>
+      </Box>
+
+      {/* Main Form Container */}
+      <Box
+        ref={formRef}
+        component={Paper}
+        elevation={0}
+        sx={{
+          maxWidth: 800,
+          mx: 'auto',
+          p: { xs: 3, sm: 4, md: 5 },
+          borderRadius: 3,
+          background: (theme) =>
+            theme.palette.mode === 'dark'
+              ? 'rgba(30, 41, 59, 0.95)'
+              : 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          border: (theme) =>
+            `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+        }}
+      >
+        {/* Alerts */}
+        <AnimatePresence>
+          {error && (
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
             >
-              <Typography 
-                variant="h3" 
-                component="h1" 
-                gutterBottom
-                sx={{ 
-                  fontWeight: 700,
-                  background: (theme) => 
-                    theme.palette.mode === 'dark'
-                      ? 'linear-gradient(135deg, #90caf9 0%, #f48fb1 100%)'
-                      : 'linear-gradient(135deg, #1976d2 0%, #dc004e 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  textAlign: 'center',
-                }}
+              <Alert 
+                severity="error" 
+                sx={{ mb: 3, borderRadius: 2 }}
+                onClose={() => setError(null)}
               >
-                Upload Document
-              </Typography>
+                {error}
+              </Alert>
             </motion.div>
-            
+          )}
+
+          {success && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
             >
-              <Typography 
-                variant="body1" 
-                color="text.secondary" 
-                sx={{ 
-                  mb: 3,
-                  fontSize: '1.1rem',
-                  lineHeight: 1.6,
-                }}
+              <Alert 
+                severity="success" 
+                icon={<CheckCircleIcon />}
+                sx={{ mb: 3, borderRadius: 2 }}
               >
-                Transform your documents with AI-powered analysis. Upload PDFs, images, or scanned documents with smart metadata organization.
-              </Typography>
+                Document uploaded successfully! Redirecting...
+              </Alert>
             </motion.div>
-          </Box>
+          )}
+        </AnimatePresence>
 
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Alert 
-                  severity="error" 
-                  sx={{ 
-                    mb: 2,
-                    borderRadius: 2,
-                    '& .MuiAlert-icon': {
-                      fontSize: '1.5rem',
-                    },
-                  }} 
-                  onClose={() => setError(null)}
-                >
-                  {error}
-                </Alert>
-              </motion.div>
-            )}
+        {/* Upload Progress */}
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="form-section"
+          >
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Uploading... {Math.round(uploadProgress)}%
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={uploadProgress}
+                sx={{
+                  height: 8,
+                  borderRadius: 1,
+                  backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 1,
+                    background: 'linear-gradient(90deg, #2563eb, #8b5cf6)',
+                  },
+                }}
+              />
+            </Box>
+          </motion.div>
+        )}
 
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, ease: 'back.out(1.7)' }}
-              >
-                <Alert 
-                  severity="success" 
-                  sx={{ 
-                    mb: 2,
-                    borderRadius: 2,
-                    '& .MuiAlert-icon': {
-                      fontSize: '1.5rem',
-                    },
-                  }}
-                >
-                  Document uploaded successfully! Redirecting...
-                </Alert>
-              </motion.div>
-            )}
-
-            {loading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Uploading... {Math.round(uploadProgress)}%
-                  </Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={uploadProgress} 
-                    sx={{ 
-                      borderRadius: 1,
-                      height: 8,
-                      backgroundColor: (theme) => 
-                        theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                      '& .MuiLinearProgress-bar': {
-                        borderRadius: 1,
-                        background: 'linear-gradient(90deg, #1976d2, #dc004e)',
-                      },
-                    }}
-                  />
-                </Box>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 1400, mx: 'auto' }}>
-            {/* Enhanced File Upload */}
+        <Box component="form" onSubmit={handleSubmit}>
+          {/* File Upload Zone */}
+          <Box className="form-section">
             <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: 0.2 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
             >
               <Box
-                sx={{
-                  border: (theme) => 
-                    isDragActive 
-                      ? `2px solid ${theme.palette.primary.main}`
-                      : `2px dashed ${theme.palette.divider}`,
-                  borderRadius: 3,
-                  p: 4,
-                  mb: 3,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  background: (theme) => 
-                    isDragActive 
-                      ? theme.palette.action.hover
-                      : 'transparent',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&:hover': { 
-                    borderColor: 'primary.main',
-                    backgroundColor: 'action.hover',
-                    transform: 'translateY(-2px)',
-                  },
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: '-100%',
-                    width: '100%',
-                    height: '100%',
-                    background: (theme) => 
-                      `linear-gradient(90deg, transparent, ${theme.palette.primary.main}20, transparent)`,
-                    transition: 'left 0.6s ease',
-                  },
-                  '&:hover::before': {
-                    left: '100%',
-                  },
-                }}
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
+                sx={{
+                  border: (theme) =>
+                    isDragActive
+                      ? `3px solid ${theme.palette.primary.main}`
+                      : `2px dashed ${theme.palette.divider}`,
+                  borderRadius: 2,
+                  p: 4,
+                  mb: 3,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: isDragActive ? 'action.hover' : 'transparent',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    backgroundColor: 'action.hover',
+                  },
+                }}
               >
                 <input
                   ref={fileInputRef}
@@ -386,113 +379,100 @@ function UploadDocument() {
                   onChange={(e) => handleFileChange(e.target.files[0])}
                   style={{ display: 'none' }}
                 />
-                
-                <motion.div
-                  animate={{ 
-                    y: isDragActive ? -10 : 0,
-                    scale: isDragActive ? 1.1 : 1,
+
+                <CloudUploadIcon
+                  sx={{
+                    fontSize: 56,
+                    color: isDragActive ? 'primary.main' : 'text.secondary',
+                    mb: 2,
+                    transition: 'color 0.3s ease',
                   }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <CloudUploadIcon 
-                    sx={{ 
-                      fontSize: 64, 
-                      color: isDragActive ? 'primary.main' : 'text.secondary',
-                      mb: 2,
-                      transition: 'all 0.3s ease',
-                    }} 
-                  />
-                </motion.div>
-                
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  {file ? (
-                    <Box className="file-preview" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                      <Description color="primary" />
-                      {file.name}
+                />
+
+                {file ? (
+                  <Box className="file-preview">
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                      <DescriptionIcon color="primary" />
+                      <Typography variant="h6" color="primary">
+                        {file.name}
+                      </Typography>
                     </Box>
-                  ) : isDragActive ? (
-                    'Drop your file here'
-                  ) : (
-                    'Click to select or drag & drop your file'
-                  )}
-                </Typography>
-                
-                <Typography variant="body2" color="text.secondary">
-                  Supported: PDF, Images (JPG, PNG), Word Documents
-                </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                      {isDragActive ? 'Drop your file here' : 'Click or drag file to upload'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Supported: PDF, Images (JPG, PNG), Word Documents
+                    </Typography>
+                  </>
+                )}
               </Box>
             </motion.div>
+          </Box>
 
-            {/* Enhanced Form Fields */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
+          <Divider sx={{ my: 3 }} />
+
+          {/* Form Fields */}
+          <Stack spacing={3}>
+            <Box className="form-section">
               <TextField
                 fullWidth
                 label="Document Title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                margin="normal"
                 required
+                placeholder="Enter a descriptive title"
                 sx={{
-                  mb: 2,
                   '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: 'primary.main',
-                    },
+                    borderRadius: 2,
                   },
                 }}
               />
-            </motion.div>
+            </Box>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
+            <Box className="form-section">
               <TextField
                 fullWidth
                 label="Description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                margin="normal"
                 multiline
                 rows={3}
-                sx={{ mb: 2 }}
+                placeholder="Provide a brief description of the document"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
               />
-            </motion.div>
+            </Box>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-            >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} className="form-section">
               <TextField
                 fullWidth
                 label="Department"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                margin="normal"
-                placeholder="e.g., Operations, Maintenance, HR"
-                sx={{ mb: 2 }}
+                placeholder="e.g., Operations, HR, Finance"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  },
+                }}
               />
-            </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-            >
-              <FormControl fullWidth margin="normal" sx={{ mb: 2 }}>
-                <InputLabel id="priority-label">Priority</InputLabel>
+              <FormControl fullWidth>
+                <InputLabel>Priority</InputLabel>
                 <Select
-                  labelId="priority-label"
-                  id="priority-select"
                   value={priority}
                   label="Priority"
                   onChange={(e) => setPriority(e.target.value)}
+                  sx={{ borderRadius: 2 }}
                 >
                   <MenuItem value="none">None</MenuItem>
                   <MenuItem value="low">Low</MenuItem>
@@ -500,137 +480,100 @@ function UploadDocument() {
                   <MenuItem value="high">High</MenuItem>
                 </Select>
               </FormControl>
-            </motion.div>
+            </Stack>
 
-            {/* Enhanced Tags Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-            >
-              <Box sx={{ mt: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                  Tags (Optional - AI will auto-tag if skipped)
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Add tag and press Enter"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                      },
-                    }}
-                  />
-                  <Button 
-                    variant="outlined" 
-                    onClick={handleAddTag}
-                    startIcon={<Add />}
-                    sx={{ 
-                      borderRadius: 2,
-                      minWidth: 100,
-                    }}
-                  >
-                    Add
-                  </Button>
-                </Box>
-                <AnimatePresence>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {tags.map((tag, index) => (
-                      <motion.div
-                        key={tag}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.2 }}
-                        layout
-                      >
-                        <Chip
-                          label={tag}
-                          onDelete={() => handleDeleteTag(tag)}
-                          color="primary"
-                          variant="outlined"
-                          sx={{
-                            borderRadius: 2,
-                            '&:hover': {
-                              transform: 'translateY(-1px)',
-                              boxShadow: 2,
-                            },
-                            transition: 'all 0.2s ease',
-                          }}
-                        />
-                      </motion.div>
-                    ))}
-                  </Box>
-                </AnimatePresence>
-              </Box>
-            </motion.div>
-
-            {/* Enhanced Submit Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-            >
-              <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-                <Button
-                  type="submit"
-                  variant="contained"
+            {/* Tags Section */}
+            <Box className="form-section">
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                Tags <Typography component="span" variant="caption" color="text.secondary">(Optional)</Typography>
+              </Typography>
+              
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <TextField
                   fullWidth
-                  disabled={loading || !file}
-                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+                  size="small"
+                  placeholder="Add tag and press Enter"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
                   sx={{
-                    py: 1.5,
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    fontSize: '1.1rem',
-                    background: (theme) => 
-                      theme.palette.mode === 'dark'
-                        ? 'linear-gradient(135deg, #90caf9 0%, #f48fb1 100%)'
-                        : 'linear-gradient(135deg, #1976d2 0%, #dc004e 100%)',
-                    '&:hover': {
-                      background: (theme) => 
-                        theme.palette.mode === 'dark'
-                          ? 'linear-gradient(135deg, #64b5f6 0%, #f06292 100%)'
-                          : 'linear-gradient(135deg, #1565c0 0%, #c51162 100%)',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
-                    },
-                    '&:disabled': {
-                      background: 'rgba(0,0,0,0.12)',
-                      color: 'rgba(0,0,0,0.26)',
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
                     },
                   }}
-                >
-                  {loading ? 'Uploading...' : 'Upload Document'}
-                </Button>
+                />
                 <Button
                   variant="outlined"
-                  onClick={() => navigate('/dashboard')}
-                  disabled={loading}
-                  sx={{
-                    py: 1.5,
-                    px: 3,
-                    borderRadius: 2,
-                    fontWeight: 600,
-                    minWidth: 120,
-                    '&:hover': {
-                      transform: 'translateY(-1px)',
-                      boxShadow: 2,
-                    },
-                  }}
+                  onClick={handleAddTag}
+                  startIcon={<AddIcon />}
+                  sx={{ borderRadius: 2, minWidth: 100 }}
                 >
-                  Cancel
+                  Add
                 </Button>
-              </Box>
-            </motion.div>
+              </Stack>
+
+              <AnimatePresence>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {tags.map((tag) => (
+                    <motion.div
+                      key={tag}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      layout
+                    >
+                      <Chip
+                        label={tag}
+                        onDelete={() => handleDeleteTag(tag)}
+                        color="primary"
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 2,
+                          fontWeight: 500,
+                        }}
+                      />
+                    </motion.div>
+                  ))}
+                </Box>
+              </AnimatePresence>
+            </Box>
+          </Stack>
+
+          {/* Action Button */}
+          <Box className="form-section" sx={{ mt: 4 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={loading || !file}
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+              sx={{
+                py: 1.5,
+                borderRadius: 2,
+                fontWeight: 600,
+                fontSize: '1rem',
+                background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 20px rgba(37, 99, 235, 0.4)',
+                },
+                transition: 'all 0.3s ease',
+                '&:disabled': {
+                  background: 'rgba(0,0,0,0.12)',
+                },
+              }}
+            >
+              {loading ? 'Uploading...' : 'Upload Document'}
+            </Button>
           </Box>
-        </Paper>
-      </motion.div>
+        </Box>
+      </Box>
     </Box>
   );
 }

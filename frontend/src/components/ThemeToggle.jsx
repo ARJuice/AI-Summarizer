@@ -1,82 +1,70 @@
-import { IconButton, Box } from '@mui/material';
-import { LightMode, DarkMode } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useRef } from 'react';
+import { Moon, Sun } from 'lucide-react';
+import { flushSync } from 'react-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ThemeToggle = () => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const buttonRef = useRef(null);
+
+  const handleToggle = useCallback(async () => {
+    if (!buttonRef.current) return;
+
+    // Check if View Transition API is supported
+    if (!document.startViewTransition) {
+      toggleTheme();
+      return;
+    }
+
+    await document.startViewTransition(() => {
+      flushSync(() => {
+        toggleTheme();
+      });
+    }).ready;
+
+    const { top, left, width, height } = buttonRef.current.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
+    const maxRadius = Math.hypot(
+      Math.max(left, window.innerWidth - left),
+      Math.max(top, window.innerHeight - top)
+    );
+
+    document.documentElement.animate(
+      {
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${maxRadius}px at ${x}px ${y}px)`,
+        ],
+      },
+      {
+        duration: 400,
+        easing: 'ease-in-out',
+        pseudoElement: '::view-transition-new(root)',
+      }
+    );
+  }, [toggleTheme]);
 
   return (
-    <Box
-      component={motion.div}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+    <button
+      ref={buttonRef}
+      onClick={handleToggle}
+      className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+      style={{
+        backgroundColor: 'transparent',
+        border: '1px solid',
+        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+        color: isDarkMode ? '#90caf9' : '#ffd700',
+      }}
+      aria-label="Toggle theme"
     >
-      <IconButton
-        onClick={toggleTheme}
-        sx={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          backgroundColor: 'transparent',
-          color: (theme) => theme.palette.text.primary,
-          border: (theme) => `1px solid ${theme.palette.divider}`,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          '&:hover': {
-            backgroundColor: (theme) => theme.palette.action.hover,
-            borderColor: (theme) => theme.palette.primary.main,
-            transform: 'scale(1.1)',
-          },
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Box
-          component={motion.div}
-          initial={false}
-          animate={{
-            rotate: isDarkMode ? 180 : 0,
-          }}
-          transition={{
-            type: 'spring',
-            stiffness: 200,
-            damping: 10,
-          }}
-          sx={{ 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {isDarkMode ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <DarkMode sx={{ 
-                fontSize: 20,
-                color: '#90caf9', // Light blue for moon in dark mode
-              }} />
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <LightMode sx={{ 
-                fontSize: 20,
-                color: '#ffd700', // Golden yellow for sun in light mode
-              }} />
-            </motion.div>
-          )}
-        </Box>
-      </IconButton>
-    </Box>
+      {isDarkMode ? (
+        <Moon size={36} strokeWidth={2.5} style={{ width: '36px', height: '36px' }} />
+      ) : (
+        <Sun size={36} strokeWidth={2.5} style={{ width: '36px', height: '36px' }} />
+      )}
+      <span className="sr-only">Toggle theme</span>
+    </button>
   );
 };
 
