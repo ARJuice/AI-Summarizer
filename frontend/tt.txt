@@ -1,0 +1,147 @@
+=====================================================
+AI SUMMARIZER FRONTEND - DEPENDENCIES & SETUP GUIDE
+=====================================================
+
+PREREQUISITES:
+--------------
+1. Node.js (v18 or higher)
+2. npm (comes with Node.js)
+
+INSTALLATION STEPS:
+-------------------
+
+1. Navigate to the frontend directory:
+   cd frontend
+
+2. Install all dependencies:
+   npm install
+
+MAIN DEPENDENCIES:
+------------------
+
+UI Libraries:
+-------------
+- @mui/material ^7.3.4
+- @mui/icons-material ^7.3.4
+- @emotion/react ^11.14.0
+- @emotion/styled ^11.14.1
+
+Animation Libraries:
+--------------------
+- framer-motion ^12.23.24
+- gsap ^3.13.0
+- @gsap/react ^2.1.2
+- lenis ^1.3.11
+
+State Management:
+-----------------
+- @reduxjs/toolkit ^2.9.0
+- react-redux ^9.2.0
+- redux ^5.0.1
+
+Routing:
+--------
+- react-router-dom ^7.9.4
+
+HTTP Client:
+------------
+- axios ^1.12.2
+
+Icons:
+------
+- lucide-react ^0.545.0
+
+Styling:
+--------
+- tailwindcss ^3.4.18
+- tailwindcss-animate ^1.0.7
+- tailwind-merge ^3.3.1
+- class-variance-authority ^0.7.1
+- clsx ^2.1.1
+
+DEV DEPENDENCIES:
+-----------------
+- vite ^7.1.7
+- @vitejs/plugin-react ^5.0.4
+- postcss ^8.5.6
+- autoprefixer ^10.4.21
+- eslint ^9.36.0
+- eslint-plugin-react-hooks ^5.2.0
+- eslint-plugin-react-refresh ^0.4.22
+- @types/react ^19.1.16
+- @types/react-dom ^19.1.9
+
+MANUAL INSTALLATIONS (if needed):
+----------------------------------
+
+If you need to install packages individually:
+
+npm install @mui/material @mui/icons-material @emotion/react @emotion/styled
+npm install framer-motion gsap @gsap/react lenis
+npm install @reduxjs/toolkit react-redux redux
+npm install react-router-dom
+npm install axios
+npm install lucide-react
+npm install tailwind-merge class-variance-authority clsx tailwindcss-animate
+npm install -D tailwindcss@3 postcss@8 autoprefixer@10
+npm install -D vite @vitejs/plugin-react
+npm install -D eslint eslint-plugin-react-hooks eslint-plugin-react-refresh
+
+CONFIGURATION FILES NEEDED:
+---------------------------
+1. vite.config.js - Vite configuration with path aliases
+2. tailwind.config.js - Tailwind CSS configuration
+3. postcss.config.js - PostCSS configuration
+4. jsconfig.json - JavaScript configuration for path aliases
+5. eslint.config.js - ESLint configuration
+
+RUNNING THE PROJECT:
+--------------------
+
+Development Server:
+npm run dev
+
+Build for Production:
+npm run build
+
+Preview Production Build:
+npm run preview
+
+Lint Code:
+npm run lint
+
+PORT:
+-----
+The development server runs on: http://localhost:5173
+
+IMPORTANT NOTES:
+----------------
+1. Make sure Node.js is installed before running npm install
+2. The project uses Tailwind CSS v3 (not v4) for compatibility
+3. Tailwind preflight is disabled to avoid conflicts with MUI
+4. Import alias @ is configured to point to ./src directory
+5. GSAP is used for advanced animations
+6. Lenis provides smooth scrolling
+7. View Transition API is used for theme toggle animation (Chrome 111+)
+
+TROUBLESHOOTING:
+----------------
+- If port 5173 is in use, Vite will automatically use the next available port
+- If you get module errors, try deleting node_modules and package-lock.json, then run npm install again
+- For Tailwind CSS issues, ensure postcss.config.js is properly configured
+- Hard refresh browser (Ctrl + Shift + R) if changes don't appear
+
+FEATURES IMPLEMENTED:
+---------------------
+✓ Material-UI components with custom theme (light/dark mode)
+✓ Animated theme toggler with circular transition
+✓ GSAP animations throughout the app
+✓ Smooth scrolling with Lenis
+✓ Redux state management
+✓ React Router for navigation
+✓ Framer Motion animations
+✓ Custom animated components (Squares, ClickSpark, CountUp, etc.)
+✓ Tailwind CSS utilities alongside MUI
+✓ Professional color scheme (blue, purple, pink)
+
+=====================================================

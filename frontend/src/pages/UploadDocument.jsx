@@ -217,7 +217,7 @@ function UploadDocument() {
         p: { xs: 2, sm: 3, md: 4 },
         background: (theme) =>
           theme.palette.mode === 'dark'
-            ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+            ? theme.palette.background.default
             : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
       }}
     >
@@ -272,7 +272,7 @@ function UploadDocument() {
           borderRadius: 3,
           background: (theme) =>
             theme.palette.mode === 'dark'
-              ? 'rgba(30, 41, 59, 0.95)'
+              ? theme.palette.background.paper
               : 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
           border: (theme) =>
