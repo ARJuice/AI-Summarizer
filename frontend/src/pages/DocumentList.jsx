@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +25,10 @@ import {
   Divider,
   ToggleButtonGroup,
   ToggleButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -32,6 +36,8 @@ import {
   FileDownload as FileDownloadIcon,
   ViewModule as ViewModuleIcon,
   ViewList as ViewListIcon,
+  FilterList as FilterListIcon,
+  Sort as SortIcon,
 } from '@mui/icons-material';
 import { setDocuments, setLoading } from '../store/documentSlice';
 import { documentService } from '../services/documentService';
@@ -43,6 +49,40 @@ function DocumentList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [sortBy, setSortBy] = useState('latest'); // 'latest', 'oldest', 'title'
+  const [filterDepartment, setFilterDepartment] = useState('all'); // 'all' or specific department
+
+  // Get unique departments from documents
+  const departments = useMemo(() => {
+    const depts = new Set(documents.map(doc => doc.department));
+    return ['all', ...Array.from(depts).sort()];
+  }, [documents]);
+
+  // Filter and sort documents
+  const filteredAndSortedDocuments = useMemo(() => {
+    let filtered = [...documents];
+
+    // Apply department filter
+    if (filterDepartment !== 'all') {
+      filtered = filtered.filter(doc => doc.department === filterDepartment);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'latest':
+          return new Date(b.uploadDate) - new Date(a.uploadDate);
+        case 'oldest':
+          return new Date(a.uploadDate) - new Date(b.uploadDate);
+        case 'title':
+          return a.title.localeCompare(b.title);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [documents, filterDepartment, sortBy]);
 
   // Function to get priority color
   const getPriorityColor = (priority) => {
@@ -158,7 +198,71 @@ function DocumentList() {
             </Button>
           )}
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+
+        {/* Sorting and Filtering Controls */}
+        <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Sort By */}
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel id="sort-by-label">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <SortIcon fontSize="small" />
+                Sort By
+              </Box>
+            </InputLabel>
+            <Select
+              labelId="sort-by-label"
+              value={sortBy}
+              label="Sort By"
+              onChange={(e) => setSortBy(e.target.value)}
+              sx={{
+                borderRadius: 2,
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'divider',
+                },
+              }}
+            >
+              <MenuItem value="latest">Latest First</MenuItem>
+              <MenuItem value="oldest">Oldest First</MenuItem>
+              <MenuItem value="title">Title (A-Z)</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Filter by Department */}
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="filter-department-label">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <FilterListIcon fontSize="small" />
+                Department
+              </Box>
+            </InputLabel>
+            <Select
+              labelId="filter-department-label"
+              value={filterDepartment}
+              label="Department"
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              sx={{
+                borderRadius: 2,
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'divider',
+                },
+              }}
+            >
+              <MenuItem value="all">All Departments</MenuItem>
+              {departments.filter(dept => dept !== 'all').map((dept) => (
+                <MenuItem key={dept} value={dept}>
+                  {dept}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Results Count */}
+          <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+            Showing {filteredAndSortedDocuments.length} of {documents.length} documents
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <Box
             sx={{
               display: 'inline-flex',
@@ -240,7 +344,7 @@ function DocumentList() {
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
         </Box>
-      ) : documents.length > 0 ? (
+      ) : filteredAndSortedDocuments.length > 0 ? (
         <AnimatePresence mode="wait">
           <motion.div
             key={viewMode}
@@ -253,7 +357,7 @@ function DocumentList() {
             {viewMode === 'grid' ? (
               // Grid View
               <Grid container spacing={3}>
-                {documents.map((doc) => (
+                {filteredAndSortedDocuments.map((doc) => (
                   <Grid item xs={12} sm={6} md={4} key={doc.id}>
                     <Card 
                       sx={{ 
@@ -321,7 +425,7 @@ function DocumentList() {
             ) : (
               // List View
               <Box sx={{ width: '100%' }}>
-                {documents.map((doc) => (
+                {filteredAndSortedDocuments.map((doc) => (
                   <Paper 
                     key={doc.id}
                     sx={{ 
@@ -393,13 +497,31 @@ function DocumentList() {
             )}
           </motion.div>
         </AnimatePresence>
-      ) : (
+      ) : documents.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary">
             No documents found
           </Typography>
           <Button variant="contained" sx={{ mt: 2 }} onClick={() => navigate('/upload')}>
             Upload Your First Document
+          </Button>
+        </Paper>
+      ) : (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            No documents match your filters
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Try adjusting your department filter or sort options
+          </Typography>
+          <Button 
+            variant="outlined" 
+            onClick={() => {
+              setFilterDepartment('all');
+              setSortBy('latest');
+            }}
+          >
+            Clear Filters
           </Button>
         </Paper>
       )}

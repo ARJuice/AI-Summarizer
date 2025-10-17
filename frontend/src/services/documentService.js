@@ -1,6 +1,31 @@
+/**
+ * ========================================
+ * DOCUMENT SERVICE - FRONTEND API CLIENT
+ * ========================================
+ * 
+ * This service handles all document-related API calls.
+ * Backend team: See /src/types/documentSchema.js for complete API specifications.
+ * 
+ * IMPORTANT FOR BACKEND INTEGRATION:
+ * 1. Set MOCK_MODE = false when backend is ready
+ * 2. Update API_BASE_URL in /src/services/api.js
+ * 3. Ensure all endpoints match the schema in documentSchema.js
+ * 4. Return MongoDB _id as 'id' in responses
+ * 5. Use ISO 8601 format for dates: YYYY-MM-DDTHH:mm:ssZ
+ * 6. Include JWT token in Authorization header
+ */
+
 import api from './api';
 
-// Mock mode for testing without backend
+// ========================================
+// CONFIGURATION
+// ========================================
+
+/**
+ * @constant MOCK_MODE
+ * @description Toggle between mock data and real backend API
+ * @backend_action Set this to FALSE when Java backend is deployed
+ */
 const MOCK_MODE = true; // Set to false when backend is ready
 
 // Mock documents data
@@ -263,8 +288,40 @@ const mockSummaries = {
   },
 };
 
+// ========================================
+// DOCUMENT SERVICE API FUNCTIONS
+// ========================================
+
 export const documentService = {
-  // Upload document
+  /**
+   * UPLOAD DOCUMENT
+   * 
+   * @backend_endpoint POST /api/documents/upload
+   * @param {FormData} formData - Contains file and metadata
+   * @param {File} formData.file - Required: The document file
+   * @param {string} formData.title - Required: Document title
+   * @param {string} formData.description - Optional: Brief description
+   * @param {string} formData.department - Required: Department enum value
+   * @param {string} formData.priority - Optional: Priority level (default: "none")
+   * @param {string} formData.tags - Optional: Comma-separated tags
+   * 
+   * @backend_response {
+   *   success: true,
+   *   message: "Document uploaded successfully",
+   *   data: {
+   *     id: "507f1f77bcf86cd799439011",
+   *     title: "...",
+   *     // ... all document fields (see documentSchema.js)
+   *   }
+   * }
+   * 
+   * @backend_notes
+   * - Content-Type: multipart/form-data
+   * - Store file in server filesystem or cloud storage
+   * - Extract text using OCR/PDF parser library
+   * - Set uploadDate to current server time (UTC)
+   * - Convert MongoDB _id (ObjectId) to string for 'id' field
+   */
   uploadDocument: async (formData) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -285,26 +342,72 @@ export const documentService = {
       return newDoc;
     }
     
+    // Backend API call
     const response = await api.post('/documents/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response.data.data; // Extract document from response wrapper
   },
 
-  // Get all documents
+  /**
+   * GET ALL DOCUMENTS
+   * 
+   * @backend_endpoint GET /api/documents
+   * @param none
+   * 
+   * @backend_response {
+   *   success: true,
+   *   data: [
+   *     { id, title, description, department, ... }, // Array of document objects
+   *     // ... more documents
+   *   ],
+   *   count: 15 // Optional: total count
+   * }
+   * 
+   * @backend_notes
+   * - Return ALL documents for the authenticated user
+   * - Sort by uploadDate descending (newest first) by default
+   * - Convert MongoDB _id to string 'id'
+   * - Format uploadDate as ISO 8601 string
+   */
   getAllDocuments: async () => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       return mockDocuments;
     }
     
+    // Backend API call
     const response = await api.get('/documents');
-    return response.data;
+    return response.data.data || response.data; // Handle both response formats
   },
 
-  // Get document by ID
+  /**
+   * GET DOCUMENT BY ID
+   * 
+   * @backend_endpoint GET /api/documents/:id
+   * @param {string} id - Document ID (MongoDB ObjectId as string)
+   * 
+   * @backend_response {
+   *   success: true,
+   *   data: {
+   *     id: "507f1f77bcf86cd799439011",
+   *     title: "...",
+   *     // ... all document fields
+   *   }
+   * }
+   * 
+   * @backend_error_404 {
+   *   success: false,
+   *   error: "Document not found"
+   * }
+   * 
+   * @backend_notes
+   * - Return complete document details
+   * - Throw 404 if document doesn't exist
+   * - Verify user has access to this document
+   */
   getDocumentById: async (id) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 400));
@@ -313,11 +416,32 @@ export const documentService = {
       return doc;
     }
     
+    // Backend API call
     const response = await api.get(`/documents/${id}`);
-    return response.data;
+    return response.data.data || response.data;
   },
 
-  // Search documents
+  /**
+   * SEARCH DOCUMENTS
+   * 
+   * @backend_endpoint GET /api/documents/search?q={searchQuery}
+   * @param {string} query - Search term entered by user
+   * 
+   * @backend_response {
+   *   success: true,
+   *   data: [
+   *     { id, title, description, ... }, // Matching documents
+   *   ]
+   * }
+   * 
+   * @backend_notes
+   * - Search should be case-insensitive
+   * - Search in: title, description, tags, department, extractedText
+   * - Use MongoDB $text search or $regex for pattern matching
+   * - Partial matches should be supported
+   * - Example: query="safety" should match "Metro Safety Guidelines"
+   * - Example: query="hr" should match tags ["hr", "employees"]
+   */
   searchDocuments: async (query) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 600));
@@ -331,11 +455,36 @@ export const documentService = {
       );
     }
     
-    const response = await api.get(`/documents/search?q=${query}`);
-    return response.data;
+    // Backend API call
+    const response = await api.get(`/documents/search?q=${encodeURIComponent(query)}`);
+    return response.data.data || response.data;
   },
 
-  // Get document summary
+  /**
+   * GET AI DOCUMENT SUMMARY
+   * 
+   * @backend_endpoint GET /api/documents/:id/summary
+   * @param {string} id - Document ID
+   * 
+   * @backend_response {
+   *   success: true,
+   *   data: {
+   *     summary: "Brief AI-generated summary of the document...",
+   *     keyPoints: [
+   *       "First key point",
+   *       "Second key point",
+   *       "Third key point"
+   *     ]
+   *   }
+   * }
+   * 
+   * @backend_notes
+   * - Use AI/ML service to generate summary from extractedText
+   * - Summary should be 2-4 sentences
+   * - keyPoints should be array of 3-5 bullet points
+   * - Cache summaries to avoid re-processing
+   * - This may take 2-5 seconds depending on document size
+   */
   getDocumentSummary: async (id) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate AI processing time
@@ -349,11 +498,37 @@ export const documentService = {
       };
     }
     
+    // Backend API call
     const response = await api.get(`/documents/${id}/summary`);
-    return response.data;
+    return response.data.data || response.data;
   },
 
-  // Update document metadata
+  /**
+   * UPDATE DOCUMENT METADATA
+   * 
+   * @backend_endpoint PUT /api/documents/:id
+   * @param {string} id - Document ID
+   * @param {Object} data - Fields to update
+   * @param {string} data.title - Optional: New title
+   * @param {string} data.description - Optional: New description
+   * @param {string} data.department - Optional: New department
+   * @param {string} data.priority - Optional: New priority
+   * @param {Array<string>} data.tags - Optional: New tags array
+   * 
+   * @backend_response {
+   *   success: true,
+   *   message: "Document updated successfully",
+   *   data: {
+   *     id, title, ... // Updated document
+   *   }
+   * }
+   * 
+   * @backend_notes
+   * - Only update fields that are provided in data object
+   * - Validate new values against schema
+   * - Update 'updatedAt' timestamp
+   * - Return complete updated document
+   */
   updateDocument: async (id, data) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -365,11 +540,33 @@ export const documentService = {
       throw new Error('Document not found');
     }
     
+    // Backend API call
     const response = await api.put(`/documents/${id}`, data);
-    return response.data;
+    return response.data.data || response.data;
   },
 
-  // Delete document
+  /**
+   * DELETE DOCUMENT
+   * 
+   * @backend_endpoint DELETE /api/documents/:id
+   * @param {string} id - Document ID to delete
+   * 
+   * @backend_response {
+   *   success: true,
+   *   message: "Document deleted successfully"
+   * }
+   * 
+   * @backend_error_404 {
+   *   success: false,
+   *   error: "Document not found"
+   * }
+   * 
+   * @backend_notes
+   * - Delete document from MongoDB
+   * - Delete associated file from storage
+   * - Verify user has permission to delete
+   * - Return 404 if document doesn't exist
+   */
   deleteDocument: async (id) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -377,11 +574,35 @@ export const documentService = {
       return { message: 'Document deleted successfully' };
     }
     
+    // Backend API call
     const response = await api.delete(`/documents/${id}`);
     return response.data;
   },
 
-  // Download document
+  /**
+   * DOWNLOAD DOCUMENT FILE
+   * 
+   * @backend_endpoint GET /api/documents/:id/download
+   * @param {string} id - Document ID
+   * 
+   * @backend_response Binary file stream (Blob)
+   * @backend_headers {
+   *   'Content-Type': 'application/pdf' (or appropriate MIME type),
+   *   'Content-Disposition': 'attachment; filename="document_name.pdf"'
+   * }
+   * 
+   * @backend_notes
+   * - Stream the actual file from storage
+   * - Set appropriate Content-Type based on fileType
+   * - Include original filename in Content-Disposition header
+   * - Use file streaming for large files (don't load entire file in memory)
+   * - Common MIME types:
+   *   - PDF: application/pdf
+   *   - DOC: application/msword
+   *   - DOCX: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+   *   - JPG/JPEG: image/jpeg
+   *   - PNG: image/png
+   */
   downloadDocument: async (id) => {
     if (MOCK_MODE) {
       await new Promise((resolve) => setTimeout(resolve, 800));
@@ -390,9 +611,15 @@ export const documentService = {
       return new Blob([content], { type: 'application/pdf' });
     }
     
+    // Backend API call
     const response = await api.get(`/documents/${id}/download`, {
-      responseType: 'blob',
+      responseType: 'blob', // Important: Tell axios to handle binary data
     });
-    return response.data;
+    return response.data; // Returns Blob directly
   },
 };
+
+// ========================================
+// EXPORT
+// ========================================
+// Default export for easy import in components
