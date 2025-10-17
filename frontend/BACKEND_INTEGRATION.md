@@ -93,19 +93,30 @@ GET /api/documents/:id/download
 - Returns binary file stream
 - Set `Content-Type` and `Content-Disposition` headers
 
-### 7. **AI Summary** (Low Priority - Can be Phase 2)
+### 7. **Generate AI Summary** (High Priority - Core Feature)
+```
+POST /api/documents/generate-summary
+```
+- Content-Type: `multipart/form-data`
+- Required fields: `file`
+- Optional fields: `summaryLength` (short/medium/long), `summaryType` (general/detailed/keypoints)
+- Returns: `extractedText`, `summary`, `keyPoints[]`
+- **Note**: This is a separate endpoint from upload - generates summary without saving to database
+
+### 8. **Get Document Summary** (Medium Priority)
 ```
 GET /api/documents/:id/summary
 ```
-- Returns AI-generated summary and key points
+- Returns AI-generated summary for already uploaded document
+- Can cache results to avoid regenerating
 
-### 8. **Update Document** (Low Priority)
+### 9. **Update Document** (Low Priority)
 ```
 PUT /api/documents/:id
 ```
 - Update document metadata (not file)
 
-### 9. **Delete Document** (Low Priority)
+### 10. **Delete Document** (Low Priority)
 ```
 DELETE /api/documents/:id
 ```
@@ -293,21 +304,391 @@ List<Document> searchDocuments(String query);
 
 ---
 
-## 🤖 AI Integration (Optional - Phase 2)
+## 🤖 AI Summarization Integration (Core Feature - High Priority)
 
-For the document summarization feature:
+The AI summarization feature is a core part of this application. Users can upload documents and immediately get AI-generated summaries without saving to the database.
 
-### Options:
-1. **OpenAI API** - GPT-4 for high-quality summaries
-2. **Google Gemini** - Cost-effective alternative
-3. **Local Model** - Hugging Face transformers (privacy-focused)
-4. **Azure AI** - Microsoft's AI services
+### Endpoint: POST /api/documents/generate-summary
 
-### Implementation:
-- Extract first 5000 characters from `extractedText`
-- Send to AI service with prompt: "Summarize this document in 3-4 sentences and provide 3-5 key points"
-- Cache results in MongoDB to avoid re-processing
-- Store in separate `summaries` collection or add to document
+**Purpose**: Extract text from uploaded documents and generate AI-powered summaries with configurable length and style.
+
+### Request Format
+
+```http
+POST /api/documents/generate-summary
+Content-Type: multipart/form-data
+
+Fields:
+- file (required): The document file (PDF, DOC, DOCX, JPG, PNG)
+- summaryLength (optional): "short" | "medium" | "long"
+- summaryType (optional): "general" | "detailed" | "keypoints"
+```
+
+### Response Format
+
+```json
+{
+  "success": true,
+  "data": {
+    "extractedText": "Full text content extracted from the document...",
+    "summary": "AI-generated summary based on preferences...",
+    "keyPoints": [
+      "Key insight 1",
+      "Key insight 2",
+      "Key insight 3",
+      "Key insight 4",
+      "Key insight 5"
+    ]
+  }
+}
+```
+
+### Implementation Steps
+
+#### Step 1: Text Extraction Libraries
+
+Choose appropriate library based on file type:
+
+**For PDFs:**
+```java
+// Using Apache PDFBox
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+
+public String extractTextFromPDF(MultipartFile file) throws IOException {
+    try (PDDocument document = PDDocument.load(file.getInputStream())) {
+        PDFTextStripper stripper = new PDFTextStripper();
+        return stripper.getText(document);
+    }
+}
+```
+
+**For Images (OCR):**
+```java
+// Using Tesseract OCR
+import net.sourceforge.tess4j.Tesseract;
+
+public String extractTextFromImage(MultipartFile file) throws Exception {
+    Tesseract tesseract = new Tesseract();
+    tesseract.setDatapath("/path/to/tessdata"); // Set tesseract data path
+    tesseract.setLanguage("eng");
+    
+    File tempFile = File.createTempFile("ocr-", ".jpg");
+    file.transferTo(tempFile);
+    
+    String text = tesseract.doOCR(tempFile);
+    tempFile.delete();
+    
+    return text;
+}
+```
+
+**For Word Documents:**
+```java
+// Using Apache POI
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
+
+public String extractTextFromDocx(MultipartFile file) throws IOException {
+    try (XWPFDocument document = new XWPFDocument(file.getInputStream());
+         XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
+        return extractor.getText();
+    }
+}
+```
+
+#### Step 2: AI Service Integration
+
+**Option 1: OpenAI GPT-4 (Recommended)**
+
+```java
+// Add dependency: com.theokanning.openai-gpt3-java:service:0.18.2
+
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.service.OpenAiService;
+
+public class OpenAIService {
+    private final OpenAiService service;
+    
+    public OpenAIService(String apiKey) {
+        this.service = new OpenAiService(apiKey);
+    }
+    
+    public SummaryResponse generateSummary(
+        String text, 
+        String summaryLength, 
+        String summaryType
+    ) {
+        // Build prompt based on preferences
+        String prompt = buildPrompt(text, summaryLength, summaryType);
+        
+        ChatCompletionRequest request = ChatCompletionRequest.builder()
+            .model("gpt-4")
+            .messages(List.of(
+                new ChatMessage("system", "You are a professional document summarizer."),
+                new ChatMessage("user", prompt)
+            ))
+            .temperature(0.7)
+            .maxTokens(1000)
+            .build();
+        
+        String response = service.createChatCompletion(request)
+            .getChoices().get(0).getMessage().getContent();
+        
+        return parseSummaryResponse(response);
+    }
+    
+    private String buildPrompt(String text, String length, String type) {
+        // Truncate text if too long (GPT-4 has token limits)
+        String truncatedText = text.length() > 10000 
+            ? text.substring(0, 10000) + "..." 
+            : text;
+        
+        String lengthInstruction = switch(length) {
+            case "short" -> "in 2-3 sentences";
+            case "medium" -> "in 4-6 sentences";
+            case "long" -> "in 7-10 sentences";
+            default -> "in 4-6 sentences";
+        };
+        
+        String typeInstruction = switch(type) {
+            case "general" -> "Provide a general overview";
+            case "detailed" -> "Provide a detailed analysis covering all major points";
+            case "keypoints" -> "Focus on extracting key points only";
+            default -> "Provide a general overview";
+        };
+        
+        return String.format("""
+            %s of the following document %s.
+            Also extract 3-5 key points as a bulleted list.
+            
+            Document text:
+            %s
+            
+            Format your response as:
+            SUMMARY:
+            [Your summary here]
+            
+            KEY POINTS:
+            - Point 1
+            - Point 2
+            - Point 3
+            """, typeInstruction, lengthInstruction, truncatedText);
+    }
+    
+    private SummaryResponse parseSummaryResponse(String response) {
+        // Parse the AI response to extract summary and key points
+        String[] parts = response.split("KEY POINTS:");
+        String summary = parts[0].replace("SUMMARY:", "").trim();
+        
+        List<String> keyPoints = new ArrayList<>();
+        if (parts.length > 1) {
+            String[] points = parts[1].split("\n");
+            for (String point : points) {
+                String cleaned = point.trim().replaceAll("^[-*•]\\s*", "");
+                if (!cleaned.isEmpty()) {
+                    keyPoints.add(cleaned);
+                }
+            }
+        }
+        
+        return new SummaryResponse(summary, keyPoints);
+    }
+}
+```
+
+**Option 2: Google Gemini (Cost-Effective)**
+
+```java
+// Similar implementation using Google's Gemini API
+// Endpoint: https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent
+```
+
+**Option 3: Azure OpenAI (Enterprise)**
+
+```java
+// Use Azure OpenAI SDK with same OpenAI interface
+// Better for compliance and data residency requirements
+```
+
+**Option 4: Local Model (Privacy-Focused)**
+
+```java
+// Use Hugging Face transformers with BART or Pegasus models
+// Requires more memory and processing power
+// No external API calls - all processing on-premises
+```
+
+#### Step 3: Complete Controller Implementation
+
+```java
+@RestController
+@RequestMapping("/api/documents")
+public class DocumentController {
+    
+    @Autowired
+    private TextExtractionService textExtractionService;
+    
+    @Autowired
+    private AIService aiService;
+    
+    @PostMapping("/generate-summary")
+    public ResponseEntity<?> generateSummary(
+        @RequestParam("file") MultipartFile file,
+        @RequestParam(value = "summaryLength", defaultValue = "medium") String summaryLength,
+        @RequestParam(value = "summaryType", defaultValue = "general") String summaryType
+    ) {
+        try {
+            // Validate file
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", "File is required"));
+            }
+            
+            // Validate file type
+            String contentType = file.getContentType();
+            if (!isValidFileType(contentType)) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", "Invalid file type"));
+            }
+            
+            // Extract text based on file type
+            String extractedText;
+            if (contentType.contains("pdf")) {
+                extractedText = textExtractionService.extractTextFromPDF(file);
+            } else if (contentType.contains("image")) {
+                extractedText = textExtractionService.extractTextFromImage(file);
+            } else if (contentType.contains("word")) {
+                extractedText = textExtractionService.extractTextFromDocx(file);
+            } else {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", "Unsupported file type"));
+            }
+            
+            // Validate extracted text
+            if (extractedText == null || extractedText.trim().isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "error", "No text could be extracted from the document. The file may be empty or contain only images."
+                ));
+            }
+            
+            // Generate AI summary
+            SummaryResponse summary = aiService.generateSummary(
+                extractedText, 
+                summaryLength, 
+                summaryType
+            );
+            
+            // Build response
+            Map<String, Object> response = Map.of(
+                "success", true,
+                "data", Map.of(
+                    "extractedText", extractedText,
+                    "summary", summary.getSummary(),
+                    "keyPoints", summary.getKeyPoints()
+                )
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                .body(Map.of(
+                    "success", false,
+                    "error", "Failed to generate summary: " + e.getMessage()
+                ));
+        }
+    }
+    
+    private boolean isValidFileType(String contentType) {
+        return contentType != null && (
+            contentType.contains("pdf") ||
+            contentType.contains("image") ||
+            contentType.contains("word") ||
+            contentType.contains("document")
+        );
+    }
+}
+```
+
+### Dependencies Required
+
+Add to `pom.xml`:
+
+```xml
+<!-- PDF Processing -->
+<dependency>
+    <groupId>org.apache.pdfbox</groupId>
+    <artifactId>pdfbox</artifactId>
+    <version>3.0.0</version>
+</dependency>
+
+<!-- OCR for Images -->
+<dependency>
+    <groupId>net.sourceforge.tess4j</groupId>
+    <artifactId>tess4j</artifactId>
+    <version>5.8.0</version>
+</dependency>
+
+<!-- Word Document Processing -->
+<dependency>
+    <groupId>org.apache.poi</groupId>
+    <artifactId>poi-ooxml</artifactId>
+    <version>5.2.5</version>
+</dependency>
+
+<!-- OpenAI API Client -->
+<dependency>
+    <groupId>com.theokanning.openai-gpt3-java</groupId>
+    <artifactId>service</artifactId>
+    <version>0.18.2</version>
+</dependency>
+```
+
+### Configuration
+
+Add to `application.properties`:
+
+```properties
+# OpenAI Configuration
+openai.api.key=${OPENAI_API_KEY}
+openai.model=gpt-4
+openai.max.tokens=1000
+
+# File Upload Configuration
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+
+# Tesseract OCR Configuration
+tesseract.data.path=/usr/share/tesseract-ocr/4.00/tessdata
+tesseract.language=eng
+```
+
+### Error Handling
+
+Common issues and solutions:
+
+1. **Empty text extraction**: File may be image-only PDF or corrupted
+2. **OCR accuracy**: Low-quality scans may produce gibberish
+3. **API rate limits**: Implement retry logic with exponential backoff
+4. **Token limits**: Truncate long documents before sending to AI
+5. **Timeout**: AI services can take 5-10 seconds for long documents
+
+### Performance Optimization
+
+1. **Caching**: Cache summaries to avoid regenerating for same file
+2. **Async Processing**: Use @Async for long-running summarization
+3. **Queue System**: Use RabbitMQ/Kafka for high-volume processing
+4. **Text Chunking**: Split large documents and summarize in parts
+
+### Security Considerations
+
+1. **Rate Limiting**: Prevent abuse of expensive AI API calls
+2. **File Validation**: Verify file types and scan for malware
+3. **Text Sanitization**: Remove sensitive data before sending to AI
+4. **API Key Security**: Store OpenAI key in environment variables, not code
 
 ---
 

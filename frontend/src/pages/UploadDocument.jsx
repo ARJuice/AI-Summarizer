@@ -17,12 +17,23 @@ import {
   LinearProgress,
   Stack,
   Divider,
+  Card,
+  CardContent,
+  IconButton,
+  Tooltip,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import { 
   CloudUpload as CloudUploadIcon, 
   Description as DescriptionIcon, 
   Add as AddIcon,
   CheckCircle as CheckCircleIcon,
+  Summarize as SummarizeIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  ContentCopy as ContentCopyIcon,
+  FileDownload as FileDownloadIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
@@ -50,6 +61,15 @@ function UploadDocument() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+
+  // AI Summarization states
+  const [summaryLength, setSummaryLength] = useState('medium'); // short, medium, long
+  const [summaryType, setSummaryType] = useState('general'); // general, detailed, keypoints
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryError, setSummaryError] = useState(null);
+  const [extractedText, setExtractedText] = useState('');
+  const [showSummary, setShowSummary] = useState(false);
 
   // Initialize Lenis smooth scroll
   useEffect(() => {
@@ -157,6 +177,84 @@ function UploadDocument() {
     setTags(tags.filter((tag) => tag !== tagToDelete));
   };
 
+  /**
+   * Handle AI Summary Generation
+   * @description Sends the uploaded file to backend for AI-powered text extraction and summarization
+   * @backend_endpoint POST /api/documents/generate-summary
+   * @param formData - Contains the file and summary preferences (length, type)
+   * @backend_response { success: true, extractedText: string, summary: string, keyPoints: string[] }
+   */
+  const handleGenerateSummary = async () => {
+    if (!file) {
+      setSummaryError('Please upload a file first');
+      return;
+    }
+
+    setGeneratingSummary(true);
+    setSummaryError(null);
+    setShowSummary(true);
+
+    try {
+      // Prepare form data for backend
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('summaryLength', summaryLength); // short (2-3 sentences), medium (4-6 sentences), long (7-10 sentences)
+      formData.append('summaryType', summaryType); // general, detailed, keypoints
+
+      // Call backend API to generate summary
+      const response = await documentService.generateSummary(formData);
+
+      setExtractedText(response.extractedText);
+      setSummary(response);
+
+      // Animate summary appearance
+      gsap.fromTo(
+        '.summary-card',
+        { scale: 0.95, opacity: 0, y: 20 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.2)' }
+      );
+    } catch (err) {
+      setSummaryError('Failed to generate summary. Please try again.');
+      console.error(err);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
+  /**
+   * Copy summary text to clipboard
+   */
+  const handleCopySummary = () => {
+    if (summary) {
+      const textToCopy = `${summary.summary}\n\nKey Points:\n${summary.keyPoints.map((point, i) => `${i + 1}. ${point}`).join('\n')}`;
+      navigator.clipboard.writeText(textToCopy);
+      // Show success feedback
+      gsap.to('.copy-button', {
+        scale: [1, 1.2, 1],
+        duration: 0.3,
+      });
+    }
+  };
+
+  /**
+   * Download summary as text file
+   */
+  const handleDownloadSummary = () => {
+    if (summary) {
+      const textContent = `Document Summary\n${'='.repeat(50)}\n\nTitle: ${title}\nGenerated: ${new Date().toLocaleString()}\n\n${summary.summary}\n\nKey Points:\n${summary.keyPoints.map((point, i) => `${i + 1}. ${point}`).join('\n')}\n\nExtracted Text:\n${'-'.repeat(50)}\n${extractedText}`;
+      
+      const blob = new Blob([textContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title || 'document'}_summary.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -245,7 +343,7 @@ function UploadDocument() {
             letterSpacing: '-0.02em',
           }}
         >
-          Upload Document
+          Upload & Summarize
         </Typography>
         <Typography
           variant="h6"
@@ -256,7 +354,7 @@ function UploadDocument() {
             fontWeight: 400,
           }}
         >
-          Transform your documents with AI-powered analysis and smart organization
+          Upload documents and get instant AI-powered summaries with key insights
         </Typography>
       </Box>
 
@@ -414,6 +512,361 @@ function UploadDocument() {
               </Box>
             </motion.div>
           </Box>
+
+          {/* AI Summarization Section */}
+          <AnimatePresence>
+            {file && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <Box className="form-section" sx={{ mt: 3 }}>
+                  <Card
+                    sx={{
+                      background: (theme) =>
+                        theme.palette.mode === 'dark'
+                          ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)'
+                          : 'linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                      border: (theme) =>
+                        `1px solid ${theme.palette.mode === 'dark' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(37, 99, 235, 0.2)'}`,
+                      borderRadius: 3,
+                      overflow: 'visible',
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      {/* Header */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #8b5cf6 0%, #2563eb 100%)',
+                            mr: 2,
+                          }}
+                        >
+                          <AutoAwesomeIcon sx={{ color: 'white', fontSize: 28 }} />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+                            AI-Powered Summarization
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Generate intelligent summaries with key insights
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Summary Configuration */}
+                      <Stack spacing={2} sx={{ mb: 3 }}>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
+                            Summary Length
+                          </Typography>
+                          <ToggleButtonGroup
+                            value={summaryLength}
+                            exclusive
+                            onChange={(e, value) => value && setSummaryLength(value)}
+                            fullWidth
+                            size="small"
+                            sx={{
+                              '& .MuiToggleButton-root': {
+                                borderRadius: 1.5,
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                '&.Mui-selected': {
+                                  background: 'linear-gradient(135deg, #8b5cf6 0%, #2563eb 100%)',
+                                  color: 'white',
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #7c3aed 0%, #1d4ed8 100%)',
+                                  },
+                                },
+                              },
+                            }}
+                          >
+                            <ToggleButton value="short">
+                              Short (2-3 sentences)
+                            </ToggleButton>
+                            <ToggleButton value="medium">
+                              Medium (4-6 sentences)
+                            </ToggleButton>
+                            <ToggleButton value="long">
+                              Long (7-10 sentences)
+                            </ToggleButton>
+                          </ToggleButtonGroup>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
+                            Summary Type
+                          </Typography>
+                          <ToggleButtonGroup
+                            value={summaryType}
+                            exclusive
+                            onChange={(e, value) => value && setSummaryType(value)}
+                            fullWidth
+                            size="small"
+                            sx={{
+                              '& .MuiToggleButton-root': {
+                                borderRadius: 1.5,
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                '&.Mui-selected': {
+                                  background: 'linear-gradient(135deg, #8b5cf6 0%, #2563eb 100%)',
+                                  color: 'white',
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #7c3aed 0%, #1d4ed8 100%)',
+                                  },
+                                },
+                              },
+                            }}
+                          >
+                            <ToggleButton value="general">
+                              General Summary
+                            </ToggleButton>
+                            <ToggleButton value="detailed">
+                              Detailed Analysis
+                            </ToggleButton>
+                            <ToggleButton value="keypoints">
+                              Key Points Only
+                            </ToggleButton>
+                          </ToggleButtonGroup>
+                        </Box>
+                      </Stack>
+
+                      {/* Generate Button */}
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={handleGenerateSummary}
+                        disabled={generatingSummary}
+                        startIcon={
+                          generatingSummary ? (
+                            <CircularProgress size={20} color="inherit" />
+                          ) : (
+                            <SummarizeIcon />
+                          )
+                        }
+                        sx={{
+                          py: 1.5,
+                          borderRadius: 2,
+                          fontWeight: 600,
+                          background: 'linear-gradient(135deg, #8b5cf6 0%, #2563eb 100%)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #7c3aed 0%, #1d4ed8 100%)',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 8px 20px rgba(139, 92, 246, 0.4)',
+                          },
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        {generatingSummary ? 'Generating Summary...' : 'Generate AI Summary'}
+                      </Button>
+
+                      {/* Summary Error */}
+                      {summaryError && (
+                        <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
+                          {summaryError}
+                        </Alert>
+                      )}
+
+                      {/* Summary Result */}
+                      <AnimatePresence>
+                        {summary && showSummary && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                            className="summary-card"
+                          >
+                            <Box
+                              sx={{
+                                mt: 3,
+                                p: 3,
+                                borderRadius: 2,
+                                background: (theme) =>
+                                  theme.palette.mode === 'dark'
+                                    ? 'rgba(0, 0, 0, 0.3)'
+                                    : 'rgba(255, 255, 255, 0.9)',
+                                border: (theme) =>
+                                  `1px solid ${theme.palette.divider}`,
+                              }}
+                            >
+                              {/* Summary Header with Actions */}
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  mb: 2,
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <SummarizeIcon color="primary" />
+                                  <Typography variant="h6" fontWeight={700}>
+                                    Summary
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Tooltip title="Copy to clipboard">
+                                    <IconButton
+                                      size="small"
+                                      onClick={handleCopySummary}
+                                      className="copy-button"
+                                      sx={{
+                                        '&:hover': {
+                                          background: (theme) =>
+                                            theme.palette.mode === 'dark'
+                                              ? 'rgba(139, 92, 246, 0.2)'
+                                              : 'rgba(37, 99, 235, 0.1)',
+                                        },
+                                      }}
+                                    >
+                                      <ContentCopyIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Download summary">
+                                    <IconButton
+                                      size="small"
+                                      onClick={handleDownloadSummary}
+                                      sx={{
+                                        '&:hover': {
+                                          background: (theme) =>
+                                            theme.palette.mode === 'dark'
+                                              ? 'rgba(139, 92, 246, 0.2)'
+                                              : 'rgba(37, 99, 235, 0.1)',
+                                        },
+                                      }}
+                                    >
+                                      <FileDownloadIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Regenerate">
+                                    <IconButton
+                                      size="small"
+                                      onClick={handleGenerateSummary}
+                                      sx={{
+                                        '&:hover': {
+                                          background: (theme) =>
+                                            theme.palette.mode === 'dark'
+                                              ? 'rgba(139, 92, 246, 0.2)'
+                                              : 'rgba(37, 99, 235, 0.1)',
+                                        },
+                                      }}
+                                    >
+                                      <RefreshIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </Box>
+
+                              {/* Summary Text */}
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  lineHeight: 1.8,
+                                  mb: 2,
+                                  whiteSpace: 'pre-wrap',
+                                }}
+                              >
+                                {summary.summary}
+                              </Typography>
+
+                              {/* Key Points */}
+                              {summary.keyPoints && summary.keyPoints.length > 0 && (
+                                <Box sx={{ mt: 3 }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    fontWeight={700}
+                                    sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}
+                                  >
+                                    <AutoAwesomeIcon fontSize="small" color="primary" />
+                                    Key Points
+                                  </Typography>
+                                  <Stack spacing={1}>
+                                    {summary.keyPoints.map((point, index) => (
+                                      <Box
+                                        key={index}
+                                        sx={{
+                                          display: 'flex',
+                                          gap: 1.5,
+                                          alignItems: 'flex-start',
+                                        }}
+                                      >
+                                        <Box
+                                          sx={{
+                                            minWidth: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #8b5cf6 0%, #2563eb 100%)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: 'white',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          {index + 1}
+                                        </Box>
+                                        <Typography variant="body2" sx={{ flex: 1, pt: 0.3 }}>
+                                          {point}
+                                        </Typography>
+                                      </Box>
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
+
+                              {/* Extracted Text Preview */}
+                              {extractedText && (
+                                <Box sx={{ mt: 3 }}>
+                                  <Divider sx={{ mb: 2 }} />
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    fontWeight={600}
+                                    sx={{ mb: 1, display: 'block' }}
+                                  >
+                                    EXTRACTED TEXT PREVIEW
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                      maxHeight: 100,
+                                      overflow: 'auto',
+                                      p: 1.5,
+                                      borderRadius: 1,
+                                      background: (theme) =>
+                                        theme.palette.mode === 'dark'
+                                          ? 'rgba(255, 255, 255, 0.05)'
+                                          : 'rgba(0, 0, 0, 0.03)',
+                                      fontSize: '0.85rem',
+                                      lineHeight: 1.6,
+                                    }}
+                                  >
+                                    {extractedText}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <Divider sx={{ my: 3 }} />
 

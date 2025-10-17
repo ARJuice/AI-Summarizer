@@ -617,6 +617,132 @@ export const documentService = {
     });
     return response.data; // Returns Blob directly
   },
+
+  /**
+   * GENERATE AI SUMMARY FROM UPLOADED FILE
+   * 
+   * @backend_endpoint POST /api/documents/generate-summary
+   * @param {FormData} formData - Contains file and summary preferences
+   * @param {File} formData.file - Required: The document file to summarize
+   * @param {string} formData.summaryLength - Optional: 'short' (2-3 sentences), 'medium' (4-6 sentences), 'long' (7-10 sentences)
+   * @param {string} formData.summaryType - Optional: 'general' (overview), 'detailed' (comprehensive), 'keypoints' (bullet points only)
+   * 
+   * @backend_response {
+   *   success: true,
+   *   data: {
+   *     extractedText: string,  // Full text extracted from document
+   *     summary: string,         // AI-generated summary based on preferences
+   *     keyPoints: string[]      // Array of 3-5 key insights
+   *   }
+   * }
+   * 
+   * @backend_notes
+   * - Content-Type: multipart/form-data
+   * - This is a separate endpoint from document upload (no database save)
+   * - Text Extraction:
+   *   - For PDFs: Use Apache PDFBox or similar library
+   *   - For Images: Use Tesseract OCR or cloud OCR service
+   *   - For DOCX: Use Apache POI or docx4j
+   * - AI Summarization Options:
+   *   1. OpenAI GPT-4 API: High quality, paid service
+   *   2. Google Gemini API: Cost-effective alternative
+   *   3. Azure OpenAI Service: Enterprise option with compliance
+   *   4. Local model: Hugging Face transformers (bart-large-cnn, pegasus)
+   * - Prompt Engineering Tips:
+   *   - For 'general': "Provide a concise overview of this document"
+   *   - For 'detailed': "Analyze this document thoroughly and provide detailed insights"
+   *   - For 'keypoints': "Extract 3-5 most important key points from this document"
+   * - Response Time: 2-5 seconds typical (vary by file size and AI service)
+   * - Error Handling:
+   *   - Handle OCR failures for low-quality scans
+   *   - Handle API rate limits from AI services
+   *   - Handle large files (>10MB) with chunking
+   * - Security Considerations:
+   *   - Sanitize extracted text before sending to AI
+   *   - Don't store temporary files permanently
+   *   - Rate limit this endpoint (expensive AI calls)
+   * 
+   * @example Backend Implementation Flow
+   * 1. Receive file via multipart/form-data
+   * 2. Validate file type and size
+   * 3. Extract text using appropriate library (PDFBox/Tesseract/POI)
+   * 4. Clean and preprocess text (remove extra whitespace, special chars)
+   * 5. Build AI prompt based on summaryLength and summaryType
+   * 6. Call AI service API with prompt + extracted text
+   * 7. Parse AI response to extract summary and key points
+   * 8. Return structured response
+   * 9. Clean up temporary files
+   */
+  generateSummary: async (formData) => {
+    if (MOCK_MODE) {
+      // Simulate AI processing time
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      const summaryLength = formData.get('summaryLength') || 'medium';
+      const summaryType = formData.get('summaryType') || 'general';
+      const fileName = formData.get('file')?.name || 'document';
+      
+      // Generate mock responses based on preferences
+      const mockResponses = {
+        short: {
+          general: `${fileName} provides essential information on the subject matter. It covers key concepts and practical guidelines for implementation.`,
+          detailed: `${fileName} offers a comprehensive analysis including background context, detailed procedures, and implementation strategies. The document emphasizes best practices throughout.`,
+          keypoints: 'Key insights extracted from the document with focused bullet points.'
+        },
+        medium: {
+          general: `${fileName} presents a thorough overview of the subject matter. It includes fundamental concepts, procedural guidelines, and practical recommendations. The document serves as a comprehensive resource for understanding core principles and their applications. Key sections cover implementation strategies and quality standards.`,
+          detailed: `${fileName} provides an extensive analysis covering multiple dimensions of the topic. The document begins with foundational concepts before diving into detailed procedures and protocols. It emphasizes evidence-based practices and includes specific implementation guidelines. Additional sections address compliance requirements, safety considerations, and quality assurance measures. The content is structured to support both learning and practical application.`,
+          keypoints: 'Document presents key points organized for quick reference and actionable insights. Each point addresses critical aspects of the subject matter.'
+        },
+        long: {
+          general: `${fileName} delivers a comprehensive examination of the subject area, beginning with introductory concepts and progressing through detailed operational guidelines. The document systematically addresses fundamental principles, practical applications, and strategic implementation approaches. It incorporates best practices from industry standards while maintaining focus on real-world applicability. The content structure facilitates both initial learning and ongoing reference use. Key themes include operational efficiency, quality assurance, compliance requirements, and continuous improvement methodologies. The document serves multiple stakeholder needs through its balanced approach to theory and practice.`,
+          detailed: `${fileName} represents an exhaustive resource covering all critical aspects of the domain. The document commences with comprehensive background information establishing necessary context and terminology. Subsequent sections provide granular details on procedures, protocols, and implementation frameworks. Each major topic includes rationale, step-by-step guidance, and practical examples to enhance understanding. The material addresses various scenarios and edge cases, ensuring broad applicability. Quality standards, safety considerations, and regulatory compliance receive extensive coverage throughout. Risk management strategies and mitigation approaches are thoroughly documented. The document concludes with future considerations and recommendations for ongoing optimization. This resource supports decision-making at all organizational levels through its depth and clarity.`,
+          keypoints: 'Comprehensive extraction of key concepts and actionable insights from the document. Points are organized to provide both strategic overview and tactical detail for implementation.'
+        }
+      };
+      
+      const summary = mockResponses[summaryLength][summaryType];
+      
+      // Generate key points based on summary type
+      const keyPointsMap = {
+        general: [
+          'Core concepts and fundamental principles clearly defined',
+          'Practical guidelines for effective implementation',
+          'Best practices aligned with industry standards',
+          'Quality assurance and compliance requirements',
+          'Recommendations for continuous improvement'
+        ],
+        detailed: [
+          'Comprehensive background and contextual framework established',
+          'Detailed procedural workflows with step-by-step instructions',
+          'Risk management strategies and mitigation protocols',
+          'Regulatory compliance requirements and safety standards',
+          'Performance metrics and evaluation criteria defined',
+          'Stakeholder responsibilities and accountability structure'
+        ],
+        keypoints: [
+          'Essential operational procedures and protocols',
+          'Critical success factors and performance indicators',
+          'Compliance and regulatory requirements',
+          'Risk mitigation and quality control measures'
+        ]
+      };
+      
+      return {
+        extractedText: `Sample extracted text from ${fileName}.\n\nThis represents the complete text content extracted from the uploaded document. In production, this would be the actual text extracted using OCR for images, PDF parsers for PDFs, or document readers for Word files.\n\nThe backend will use libraries like:\n- Apache PDFBox for PDF text extraction\n- Tesseract OCR for image-based text recognition\n- Apache POI for Microsoft Office document processing\n\nThe extracted text forms the input for AI summarization services such as OpenAI GPT-4, Google Gemini, or local models like BART or Pegasus.`,
+        summary: summary,
+        keyPoints: keyPointsMap[summaryType]
+      };
+    }
+    
+    // Backend API call
+    const response = await api.post('/documents/generate-summary', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data || response.data;
+  },
 };
 
 // ========================================

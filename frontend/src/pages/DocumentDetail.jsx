@@ -21,6 +21,7 @@ import {
   Summarize as SummarizeIcon,
 } from '@mui/icons-material';
 import { documentService } from '../services/documentService';
+import { formatDate } from '../utils/helpers';
 
 function DocumentDetail() {
   const { id } = useParams();
@@ -211,7 +212,7 @@ function DocumentDetail() {
                     Upload Date
                   </Typography>
                   <Typography variant="body1">
-                    {new Date(document?.uploadDate).toLocaleDateString()}
+                    {formatDate(document?.uploadDate)}
                   </Typography>
                 </Box>
 

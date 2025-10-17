@@ -10,15 +10,14 @@ export const formatFileSize = (bytes) => {
 };
 
 /**
- * Format date to locale string
+ * Format date to dd/mm/yy format
  */
 export const formatDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const year = String(date.getFullYear()).slice(-2); // Get last 2 digits of year
+  return `${day}/${month}/${year}`;
 };
 
 /**

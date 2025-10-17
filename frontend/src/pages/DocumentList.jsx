@@ -41,6 +41,7 @@ import {
 } from '@mui/icons-material';
 import { setDocuments, setLoading } from '../store/documentSlice';
 import { documentService } from '../services/documentService';
+import { formatDate } from '../utils/helpers';
 
 function DocumentList() {
   const dispatch = useDispatch();
@@ -403,7 +404,7 @@ function DocumentList() {
                           )}
                         </Box>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                          Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                          Uploaded: {formatDate(doc.uploadDate)}
                         </Typography>
                       </CardContent>
                       <CardActions>
@@ -487,7 +488,7 @@ function DocumentList() {
                           <Chip key={tag} label={tag} size="small" variant="outlined" />
                         ))}
                         <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                          Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                          Uploaded: {formatDate(doc.uploadDate)}
                         </Typography>
                       </Box>
                     </Box>
